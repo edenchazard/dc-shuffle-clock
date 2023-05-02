@@ -1,24 +1,30 @@
 let intervalID;
 
-const sounds = [];
-sounds[0] = null;
-sounds[1] = new Audio('./assets/sms1.mp3');
-sounds[2] = new Audio('./assets/sms2.mp3');
-sounds[3] = new Audio('./assets/sms3.mp3');
-sounds[4] = new Audio('./assets/sms4.mp3');
-sounds[5] = new Audio('./assets/sms5.mp3');
+// all sounds are sequentially id'd, so we can avoid repeating ourselves
+// by just creating an array of numbers and mapping it.
+const sounds = new Array(5).fill(0).map((dummy, index) => `SMS Alert ${index + 1}`);
 
-const biomes = [];
-biomes[0] = null;
-biomes[1] = 'https://dragcave.net/locations/5';
-biomes[2] = 'https://dragcave.net/locations/1';
-biomes[3] = 'https://dragcave.net/locations/2';
-biomes[4] = 'https://dragcave.net/locations/3';
-biomes[5] = 'https://dragcave.net/locations/4';
-biomes[6] = 'https://dragcave.net/locations/6';
+// add "none sms" options such as no sound here
+const noSoundID = (sounds.push("No sound, please")) - 1;
+console.log(noSoundID)
+
+const biomes = ['alpine', 'coast', 'desert', 'forest', 'jungle', 'volcano']
+    .map((name, index) => ({
+        id: index + 1,
+        // capitalise the first letter
+        name: ucFirst(name)
+    }));
+
+/**
+ * capitalises first letter of a string
+ * @param {string} str 
+ * @returns {string}
+ */
+function ucFirst(str) {
+    return str.charAt(0).toUpperCase + str.slice(1);
+}
 
 // dom
-
 const pausePlay = document.getElementById('pause-play');
 const minuteDisplay = document.getElementById('minutes');
 const secondDisplay = document.getElementById('seconds');
@@ -34,85 +40,126 @@ const biomeToggle = document.getElementById('biome-toggle');
 const popupSelect = document.getElementById('popup-select');
 const closeToggle = document.getElementById('close-toggle');
 
+const form = document.getElementById('form');
+
 // local storage and preferences
+const getPreferance = (keyname, defaultValue) => {
+    return localStorage.getItem(keyname) ?? defaultValue;
+}
+const savePreferance = (keyname, value) => localStorage.setItem(keyname, value);
 
-let delay; // int
-if (!localStorage.getItem('delay')) delay = 12;
-else delay = localStorage.getItem('delay');
+// Not only do we try to fetch local storage values, we
+// use this time to set the values if they don't already exist.
+let delay = storedOrDefault('delay', 12); // int
+let soundChoice = storedOrDefault('soundChoice', 0); // int
+let biomeChoice = storedOrDefault('biomeChoice', 0); // int
+let soundVolume = storedOrDefault('soundVolume', 1); // float
+let isNotifyOn = storedOrDefault('isNotifyOn', 'no'); // string
+let popupType = storedOrDefault('popupType', 'tab') // string
+let closeAutomatically = storedOrDefault('closeAutomatically', 'no'); // string
 
-let soundChoice; // int
-if (!localStorage.getItem('soundChoice')) soundChoice = 0;
-else soundChoice = localStorage.getItem('soundChoice');
+/*
+tbh I would create an object with all your user-settable preferances
+and refer to that. then I would add a change listener to each
+element to a) save the pref to localstorage b) update our code
+this would however save 'invalid' values
 
-let biomeChoice; // int
-if (!localStorage.getItem('biomeChoice')) biomeChoice = 0;
-else biomeChoice = localStorage.getItem('biomeChoice');
+const prefs = { soundChoice: x, popupType: y, ... }; in the global scope
 
-let soundVolume; // float
-if (!localStorage.getItem('soundVolume')) soundVolume = 1;
-else soundVolume = localStorage.getItem('soundVolume');
+then this in the setup function
+form.elements.forEach(el => el.addEventListener('change', function(){
+    const pref = this.id;
+    savePreferance(pref, this.value)
+    prefs[pref] = this.value;
+}));
+*/
 
-let isNotifyOn; // string
-if (!localStorage.getItem('isNotifyOn')) isNotifyOn = 'no';
-else isNotifyOn = localStorage.getItem('isNotifyOn');
+/**
+ * Sets up the DOM with our biomes and sounds automated.
+ */
+function setup() {
+    const soundOptions = document.createDocumentFragment();
+    sounds.forEach((soundName, index) => {
+        const option = soundOptions.appendChild(document.createElement('option'));
+        option.innerHTML = soundName;
+        option.value = index;
+        console.log(option)
+    });
 
-let popupType; // string
-if (!localStorage.getItem('popupType')) popupType = 'tab';
-else popupType = localStorage.getItem('popupType');
+    soundSelect.appendChild(soundOptions);
 
-let closeAutomatically; // string
-if (!localStorage.getItem('closeAutomatically')) closeAutomatically = 'no';
-else closeAutomatically = localStorage.getItem('closeAutomatically');
+    // insert our preferences
+    form.elements.forEach(el => {
+        const value = getPreferance(this.id);
+
+        // skip if no ls value set
+        if (value === null) return;
+
+        // otherwise set it
+        this.value = value;
+    });
+}
+
+// add dom extras
+setup();
 
 // input wiring
-
-delayInput.value = delay;
-delayInput.addEventListener('input', e => {
-    delay = e.target.value;
-    localStorage.setItem('delay', delay);
+delayInput.addEventListener('change', function () {
+    delay = this.value;
+    savePreferance('delay', delay);
 });
 
-soundSelect.value = soundChoice;
-soundSelect.addEventListener('input', e => {
-    soundChoice = e.target.value;
-    localStorage.setItem('soundChoice', soundChoice);
-    if (!sounds[soundChoice]) {
+soundSelect.addEventListener('change', function () {
+    choice = parseInt(this.value);
+    savePreferance('soundChoice', choice);
+    // If the selected option value matches the id of
+    // our 'no sound' option, it means... they want no sound
+    if (choice === noSoundID) {
+        console.log("no sound!")
         volumeInput.disabled = true;
         testVolume.disabled = true;
-    } 
+    }
     else {
         volumeInput.disabled = false;
         testVolume.disabled = false;
     }
-})
-
-volumeInput.value = soundVolume * 100;
-if (!sounds[soundChoice]) volumeInput.disabled = true;
-volumeInput.addEventListener('input', e => {
-    soundVolume = e.target.value / 100;
-    localStorage.setItem('soundVolume', soundVolume);
 });
 
-if (biomes[biomeChoice]) biomeInput.value = biomeChoice;
+volumeInput.value = soundVolume * 100;
+
+if (soundChoice === noSoundID) {
+    volumeInput.disabled = true;
+    testVolume.disabled = true;
+}
+
+volumeInput.addEventListener('input', e => {
+    soundVolume = e.target.value / 100;
+    savePreferance('soundVolume', soundVolume);
+});
+
+if (biomeToggle.value) biomeInput.value = biomeChoice;
+else {
+
+}
 else biomeInput.value = 1;
-biomeInput.addEventListener('input', e => {
+
+biomeInput.addEventListener('change', e => {
     biomeChoice = e.target.value;
     localStorage.setItem('biomeChoice', biomeChoice);
 })
 
-if (!sounds[soundChoice]) testVolume.disabled = true;
 testVolume.addEventListener('click', () => {
     if (sounds[soundChoice]) {
         sounds[soundChoice].currentTime = 0;
         sounds[soundChoice].play();
-    } 
+    }
 })
 
-if (biomes[biomeChoice]) biomeToggle.checked = true;
+/* if (biomes[biomeChoice]) biomeToggle.checked = true;
 else {
     biomeInput.disabled = true;
     popupSelect.disabled = true;
-}
+} */
 
 biomeToggle.addEventListener('click', () => {
     if (biomes[biomeChoice]) {
@@ -129,15 +176,15 @@ biomeToggle.addEventListener('click', () => {
     }
 })
 
-popupSelect.addEventListener('input', e => {
+popupSelect.addEventListener('change', e => {
     switch (e.target.value) {
         case 'window':
             popupType = 'window';
-            localStorage.setItem('popupType', 'window');
+            savePreferance('popupType', 'window');
             break;
         case 'tab':
             popupType = 'tab';
-            localStorage.setItem('popupType', 'tab');
+            savePreferance('popupType', 'tab');
             break;
     }
 })
@@ -206,25 +253,13 @@ function stop() {
 pausePlay.classList.add('pausing');
 pausePlay.innerHTML = '<img src="./assets/play.svg" class="icon_play">';
 
-pausePlay.addEventListener('click', () => {
-    if (intervalID) {
-        stop();
-        pausePlay.classList.replace('playing', 'pausing');
-        pausePlay.innerHTML = '<img src="./assets/play.svg" class="icon_play">';
-    } else if (!intervalID) {
-        start();
-        pausePlay.classList.replace('pausing', 'playing');
-        pausePlay.innerHTML = '<img src="./assets/pause.svg" class="icon_play">';
-    }
-});
-
 // notification functions
 
 function notify(minute) {
     let notifText;
     if (minute == 59) notifText = `The hourly cave refresh will occur in about ${delay} seconds.`;
     else notifText = `The next cave shuffle will occur in ${delay} seconds.`;
-    const notif = new Notification('Cave Shuffle Clock', {body: notifText,});
+    const notif = new Notification('Cave Shuffle Clock', { body: notifText, });
     if (biomes[biomeChoice]) notif.addEventListener('click', e => {
         e.preventDefault();
         if (popupType === 'tab') {
@@ -237,7 +272,7 @@ function notify(minute) {
     console.log(`Notification should be sent at minute :${minute}`);
     if (closeAutomatically == 'yes') setTimeout(() => {
         notif.close()
-    }, delay*1000);
+    }, delay * 1000);
 }
 
 function ask() {
@@ -246,7 +281,7 @@ function ask() {
 
 function handle(permission) {
     switch (permission) {
-        case 'denied': 
+        case 'denied':
             notificationStatus.textContent = 'Notifications blocked';
             notificationStatus.removeEventListener('click', ask);
             notificationStatus.disabled = 'true';
@@ -295,3 +330,20 @@ if (!typeof Notification) {
     biomeInput.disabled = true;
     closeToggle.disabled = true;
 } else handle(Notification.permission);
+
+form.addEventListener('submit', function (e) {
+    // prevent the form submitting and avoid the page
+    // refresh. Also, we've assigned the pause-play
+    // as our 'submit' button
+    e.preventDefault();
+
+    if (intervalID) {
+        stop();
+        pausePlay.classList.replace('playing', 'pausing');
+        pausePlay.innerHTML = '<img src="./assets/play.svg" class="icon_play">';
+    } else if (!intervalID) {
+        start();
+        pausePlay.classList.replace('pausing', 'playing');
+        pausePlay.innerHTML = '<img src="./assets/pause.svg" class="icon_play">';
+    }
+});

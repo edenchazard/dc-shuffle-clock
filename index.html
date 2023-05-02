@@ -8,14 +8,15 @@
     <title>Cave Shuffle Clock</title>
     <link rel="stylesheet" href="./styles/style.css">
     <!-- <link rel="shortcut icon" href="./assets/favicon.ico" type="image/x-icon"> -->
+    <script src="script.js" defer></script>
 </head>
 <body class="flex-center">
     <div class="clock flex-center">
-        <button id="pause-play" class="clock_play"></button>
+        <button id="pause-play" class="clock_play" type="submit" form="form"></button>
         <span id="minutes" class="clock_minutes">00</span>
         <span id="seconds" class="clock_seconds">00</span>
     </div>
-    <div class="preferences">
+    <form class="preferences" id='form'>
         <div class="row">
             <div class="left">
                 <label for="delay-input"><b>Delay</b></label>
@@ -30,12 +31,6 @@
             </div>
             <div class="right pref_sound">
                 <select id="sound-select" class="pref_sound_input">
-                    <option value="1">SMS Alert 1</option>
-                    <option value="2">SMS Alert 2</option>
-                    <option value="3">SMS Alert 3</option>
-                    <option value="4">SMS Alert 4</option>
-                    <option value="5">SMS Alert 5</option>
-                    <option value="0">No sound, please</option>
                 </select>
             </div>
         </div>
@@ -45,7 +40,7 @@
             </div>
             <div class="right pref_volume">
                 <input type="range" id="volume-input" class="pref_volume_input" min="1" max="100">
-                <button id="test-volume" class="pref_volume_test">Test Sound</button>
+                <button id="test-volume" class="pref_volume_test" type="button">Test Sound</button>
             </div>
         </div>
         <div class="row">
@@ -54,14 +49,14 @@
                 <small>Experimental!</small>
             </div>
             <div class="right pref_notify">
-                <button id="notification-status" class="pref_notify_status"></button>
+                <button id="notification-status" class="pref_notify_status" type="button"></button>
                 <div class="pref_notify_options">
                     <div class="options_row">
                         <input type="checkbox" id="biome-toggle" class="options_row_check" aria-labelledby="biome-tab-choice">
                         <label for="biome-toggle" class="options_label">Jump to biome when clicked</label>
                         <div class="options_subrow">
                             <p id="biome-tab-choice" class="options_subrow_text">
-                                Take me to 
+                                Take me to the 
                                 <select title="Biome Selection" id="biome-select" class="pref_notify_select">
                                     <option value="1">Alpine</option>
                                     <option value="2">Coast</option>
@@ -85,19 +80,18 @@
                 </div>
             </div>
         </div>
-    </div>
+    </form>
     <div class="footer flex-center">
         <span><b>Cave Shuffle Clock</b> &copy; endulum/μ</span>
         <small>Simple alarm tool for use with Dragon Cave.</small>
         <div class="footer_icons">
             <a href="https://forums.dragcave.net/topic/190954-cave-shuffle-timer-v10/">
-                <img src="./assets/speech.svg" class="footer_icon" alt="Thread">
+                <img src="./assets/speech.svg" class="footer_icon" alt="Thread" role="img" aria-hidden="true">
             </a>
             <a href="https://github.com/endulum/dc-shuffle-clock">
-                <img src="./assets/github.svg" class="footer_icon" alt="Repository">
+                <img src="./assets/github.svg" class="footer_icon" alt="Repository" role="img" aria-hidden="true">
             </a>
         </div>
     </div>
-    <script src="script.js"></script>
 </body>
 </html>
